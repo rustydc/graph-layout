@@ -1,5 +1,4 @@
 var fdg = {};
-exports.fdg = fdg;
 
 fdg.Vector = function() {
   this.x = 0;
@@ -24,7 +23,6 @@ fdg.Vector.prototype.len = function() {
   return fdg.util.pythagorean(this.x, this.y);
 };
   
-
 fdg.Vector.prototype.normalize = function() {
   var len = this.len();
   if (len == 0) {
