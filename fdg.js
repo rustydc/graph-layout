@@ -43,7 +43,7 @@ fdg.Node = function(id) {
 
 fdg.Node.prototype.distance = function(other) {
   var v = this.p.diff(other.p);
-  return Math.max(v.len(), 0.01);
+  return Math.max(v.len(), 1);
 };
 
 fdg.Node.prototype.direction = function(other) {
@@ -103,7 +103,7 @@ fdg.Graph.prototype.advance = function(ts) {
       var other = this.nodes[otherId];
       if (other == n) { continue; }
       var distance = n.distance(other);
-      var dsquared = Math.pow(distance, 2);
+      var dsquared = Math.pow(distance / 10, 2);
       // TODO: Add internode gravity?
       var lf = fdg.util.LF / dsquared;
       var dir = n.direction(other);
@@ -178,33 +178,83 @@ fdg.drawGraph = function(g) {
 };
 
 
-fdg.sample = new fdg.Graph();
-fdg.sample.addNode(1);
-fdg.sample.addNode(2);
-fdg.sample.addNode(3);
-fdg.sample.addNode(4);
-fdg.sample.addNode(5);
-fdg.sample.addNode(6);
-fdg.sample.addNode(7);
-fdg.sample.addNode(8);
-fdg.sample.addEdge( 1, 1, 2);
-fdg.sample.addEdge( 2, 2, 3);
-fdg.sample.addEdge( 3, 3, 4);
-fdg.sample.addEdge( 4, 4, 1);
-fdg.sample.addEdge( 5, 5, 6);
-fdg.sample.addEdge( 6, 6, 7);
-fdg.sample.addEdge( 7, 7, 8);
-fdg.sample.addEdge( 8, 8, 5);
-fdg.sample.addEdge( 9, 1, 5);
-fdg.sample.addEdge(10, 2, 6);
-fdg.sample.addEdge(11, 3, 7);
-fdg.sample.addEdge(12, 4, 8);
+fdg.cube = new fdg.Graph();
+fdg.cube.addNode(1);
+fdg.cube.addNode(2);
+fdg.cube.addNode(3);
+fdg.cube.addNode(4);
+fdg.cube.addNode(5);
+fdg.cube.addNode(6);
+fdg.cube.addNode(7);
+fdg.cube.addNode(8);
+fdg.cube.addEdge( 1, 1, 2);
+fdg.cube.addEdge( 2, 2, 3);
+fdg.cube.addEdge( 3, 3, 4);
+fdg.cube.addEdge( 4, 4, 1);
+fdg.cube.addEdge( 5, 5, 6);
+fdg.cube.addEdge( 6, 6, 7);
+fdg.cube.addEdge( 7, 7, 8);
+fdg.cube.addEdge( 8, 8, 5);
+fdg.cube.addEdge( 9, 1, 5);
+fdg.cube.addEdge(10, 2, 6);
+fdg.cube.addEdge(11, 3, 7);
+fdg.cube.addEdge(12, 4, 8);
 
-fdg.f = function() {
+fdg.star = new fdg.Graph();
+fdg.star.addNode(1);
+fdg.star.addNode(2);
+fdg.star.addNode(3);
+fdg.star.addNode(4);
+fdg.star.addNode(5);
+fdg.star.addEdge( 1, 1, 2);
+fdg.star.addEdge( 2, 2, 3);
+fdg.star.addEdge( 3, 3, 4);
+fdg.star.addEdge( 4, 4, 5);
+fdg.star.addEdge( 5, 5, 1);
+fdg.star.addEdge( 6, 1, 3);
+fdg.star.addEdge( 7, 4, 1);
+fdg.star.addEdge( 8, 3, 5);
+fdg.star.addEdge( 9, 2, 4);
+fdg.star.addEdge( 10, 2, 5);
+
+
+fdg.tritree = new fdg.Graph();
+fdg.tritree.addNode(1);
+fdg.tritree.addNode(2);
+fdg.tritree.addNode(3);
+fdg.tritree.addNode(4);
+fdg.tritree.addNode(5);
+fdg.tritree.addNode(6);
+fdg.tritree.addNode(7);
+fdg.tritree.addNode(8);
+fdg.tritree.addNode(9);
+fdg.tritree.addNode(10);
+fdg.tritree.addNode(11);
+fdg.tritree.addNode(12);
+fdg.tritree.addNode(13);
+fdg.tritree.addEdge(1, 1, 2);
+fdg.tritree.addEdge(2, 1, 3);
+fdg.tritree.addEdge(3, 1, 4);
+fdg.tritree.addEdge(4, 2, 5);
+fdg.tritree.addEdge(5, 2, 6);
+fdg.tritree.addEdge(6, 2, 7);
+fdg.tritree.addEdge(7, 3, 8);
+fdg.tritree.addEdge(8, 3, 9);
+fdg.tritree.addEdge(9, 3, 10);
+fdg.tritree.addEdge(10, 4, 11);
+fdg.tritree.addEdge(11, 4, 12);
+fdg.tritree.addEdge(12, 4, 13);
+
+
+fdg.f = function(g) {
   window.setInterval(function() {
-    fdg.sample.advance(0.01);
-    fdg.drawGraph(fdg.sample);
+    g.advance(0.01);
+    fdg.drawGraph(g);
   }, 0);
 }
 
-window.onload = fdg.f;
+window.onload = function() {
+  var graphs = [fdg.star, fdg.cube, fdg.tritree];
+  var n = Math.random() * 3;
+  fdg.f(graphs[Math.floor(n)]);
+};
