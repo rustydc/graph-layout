@@ -1,13 +1,14 @@
 var fdg = {};
 
-fdg.Vector = function() {
-  this.x = 0;
-  this.y = 0;
+fdg.Vector = function(x, y) {
+  this.x = x || 0;
+  this.y = y || 0;
+  //this.x = x || Math.random() * 50;
+  //this.y = y || Math.random() * 50;
 };
 
 fdg.Vector.prototype.add = function(v) {
-  this.x += v.x;
-  this.y += v.y;
+  return new fdg.Vector(this.x + v.x, this.y + v.y);
 };
 
 fdg.Vector.prototype.diff = function(v) {
@@ -15,8 +16,7 @@ fdg.Vector.prototype.diff = function(v) {
 };
 
 fdg.Vector.prototype.mult = function(s) {
-  this.x *= s;
-  this.y *= s;
+  return new fdg.Vector(this.x * s, this.y * s);
 };
 
 fdg.Vector.prototype.len = function() {
@@ -25,17 +25,13 @@ fdg.Vector.prototype.len = function() {
   
 fdg.Vector.prototype.normalize = function() {
   var len = this.len();
+  var x = this.x, y = this.y;
   if (len == 0) {
-    // Point vectors go North, arbitrarily.
-    this.x = 0;
-    this.y = 1;
+    x = Math.random() - 0.5;
+    y = Math.random() - 0.5;
+    len = fdg.util.pythagorean(x, y);
   }
-  this.x /= len;
-  this.y /= len;
-};
-
-fdg.Vector.prototype.clone = function() {
-  return new fdg.Vector(this.x, this.y);
+  return new fdg.Vector(x / len, y / len);
 };
 
 fdg.Node = function(id) {
@@ -46,14 +42,12 @@ fdg.Node = function(id) {
 };
 
 fdg.Node.prototype.distance = function(other) {
-  var v = this.diff(other);
-  return v.length();
+  var v = this.p.diff(other.p);
+  return Math.max(v.len(), 0.01);
 };
 
 fdg.Node.prototype.direction = function(other) {
-  var v = this.diff(other);
-  v.normalize();
-  return v;
+  return this.p.diff(other.p).normalize();
 };
 
 fdg.Node.prototype.addEdge = function(id, other) {
@@ -94,50 +88,95 @@ fdg.Graph.prototype.removeEdge = function(id) {
 };
 
 fdg.Graph.prototype.advance = function(ts) {
-  for (var n in this.nodes) {
+  for (var nId in this.nodes) {
+    var n = this.nodes[nId];
     var f = new fdg.Vector(0, 0); // forces
     // Update edge forces with Hooke's Law of Elasticity
     for (var e in n.edges) {
       var other = n.edges[e];
       var distance = n.distance(other);
       var sf = fdg.util.SC * (fdg.util.SL - distance);
-      var dir = n.direction(other);
-      dir.mult(sf);
-      f.add(dir);
+      f = f.add(n.direction(other).mult(sf));
     }
     // Update layout forces.  (n^2, not n(n-1)/2. Close enough.)
-    for (var i in this.nodes) {
-      var other = this.nodes[i];
+    for (var otherId in this.nodes) {
+      var other = this.nodes[otherId];
+      if (other == n) { continue; }
       var distance = n.distance(other);
       var dsquared = Math.pow(distance, 2);
       // TODO: Add internode gravity?
-      var lf = fdg.util.L / dsquared;
+      var lf = fdg.util.LF / dsquared;
       var dir = n.direction(other);
-      dir.mult(gf + rf);
-      f.add(dir);
+      f = f.add(dir.mult(lf));
     }
     // TODO: Add global gravity? (Down? Center?)
     // Apply friction.
-    n.v.mult(Math.pow(0.95, ts));
+    n.v = n.v.mult(Math.pow(fdg.util.FRICTION, ts*100));
     // Update velocity.
-    f.mult(ts);
-    n.v.add(f);
+    f = f.mult(ts);
+    n.v = n.v.add(f);
     // Move the node.
-    var pd = n.v.clone();
-    pd.mult(ts);
-    n.p.add(pd);
+    n.p = n.p.add(n.v.mult(ts));
     // TODO: Position event.
   };
+};
+
+fdg.Graph.prototype.getWindow = function() {
+  var minX = 10000000000;
+  var maxX = -10000000000;
+  var minY = 10000000000;
+  var maxY = -10000000000;
+  for (var nId in this.nodes) {
+    var n = this.nodes[nId];
+    minX = Math.min(minX, n.p.x);
+    maxX = Math.max(maxX, n.p.x);
+    minY = Math.min(minY, n.p.y);
+    maxY = Math.max(maxY, n.p.y);
+  }
+  return [new fdg.Vector(minX, minY), new fdg.Vector(maxX, maxY)];
 };
 
 fdg.util = {};
 fdg.util.pythagorean = function(x, y) {
   return Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
 };
-fdg.util.SL = 1;
-fdg.util.SC = 1;
-fdg.util.FRICTION = 0.95;
-fdg.util.LF = 1;
+fdg.util.SL = 10;
+fdg.util.SC = 10;
+fdg.util.FRICTION = 0.9;
+fdg.util.LF = 100;
+
+
+fdg.drawGraph = function(g) {
+  var win = g.getWindow();
+  var ctx = document.getElementById('fdg').getContext('2d');
+  ctx.fillStyle = 'white';
+  ctx.clearRect(0,0,400,400);
+  ctx.strokeStyle = 'green';
+  for (var nId in g.nodes) {
+    var n = g.nodes[nId];
+    var range = 30;
+    var x = ((n.p.x - win[0].x)/range)*140 + 5;
+    var y = ((n.p.y - win[0].y)/range)*140 + 5;
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, 2 * Math.PI, false);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'blue';
+  for (var eId in g.edges) {
+    var n1 = g.edges[eId];
+    var n2 = n1.edges[eId];
+    var range = 30;
+    var x1 = ((n1.p.x - win[0].x)/range)*140 + 5;
+    var y1 = ((n1.p.y - win[0].y)/range)*140 + 5;
+    var x2 = ((n2.p.x - win[0].x)/range)*140 + 5;
+    var y2 = ((n2.p.y - win[0].y)/range)*140 + 5;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+};
+
 
 fdg.sample = new fdg.Graph();
 fdg.sample.addNode(1);
@@ -160,3 +199,12 @@ fdg.sample.addEdge( 9, 1, 5);
 fdg.sample.addEdge(10, 2, 6);
 fdg.sample.addEdge(11, 3, 7);
 fdg.sample.addEdge(12, 4, 8);
+
+fdg.f = function() {
+  window.setInterval(function() {
+    fdg.sample.advance(0.01);
+    fdg.drawGraph(fdg.sample);
+  }, 0);
+}
+
+window.onload = fdg.f;
